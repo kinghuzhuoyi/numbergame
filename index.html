@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字猜谜游戏</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Digital+7&display=swap');
+        
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .game-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .number-display, .number-input {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .number-box, input[type="number"] {
+            width: 22%;
+            height: 60px;
+            border: 1px solid #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+            font-family: 'Digital 7', monospace;
+            color: #000;
+        }
+        .number-box {
+            background-color: #90EE90;
+        }
+        input[type="number"] {
+            background-color: #FFFFFF;
+            text-align: center;
+            -moz-appearance: textfield;
+        }
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .button-group button {
+            padding: 10px;
+            font-size: 16px;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        input.error {
+            border: 2px solid red;
+        }
+        .submit-record {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .submit-record h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        #record {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        #record p {
+            margin: 5px 0;
+            padding: 5px;
+            background-color: #fff;
+            border-radius: 3px;
+        }
+        #record p:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="number-display">
+            <div class="number-box">?</div>
+            <div class="number-box">?</div>
+            <div class="number-box">?</div>
+            <div class="number-box">?</div>
+        </div>
+        
+        <div class="number-input">
+            <input type="number" min="0" max="9" required>
+            <input type="number" min="0" max="9" required>
+            <input type="number" min="0" max="9" required>
+            <input type="number" min="0" max="9" required>
+        </div>
+        
+        <div class="button-group">
+            <button id="start">开始新游戏</button>
+            <button id="submit" disabled>提交</button>
+            <button id="reveal" disabled>公布答案</button>
+        </div>
+        
+        <div class="submit-record">
+            <h3>提交记录</h3>
+            <p>尝试次数：<span id="attempts">0</span></p>
+            <div id="record"></div>
+        </div>
+    </div>
+
+    <script>
+        const startBtn = document.getElementById('start');
+        const submitBtn = document.getElementById('submit');
+        const revealBtn = document.getElementById('reveal');
+        const inputs = document.querySelectorAll('input[type="number"]');
+        const recordDiv = document.getElementById('record');
+        const attemptsSpan = document.getElementById('attempts');
+        const numberBoxes = document.querySelectorAll('.number-box');
+        let attempts = 0;
+        let 谜底 = [];
+        let gameInProgress = false;
+
+        function 游戏控制函数() {
+            // 游戏初始化
+            const 数字列表 = Array.from({length: 10}, (_, i) => i);
+            谜底 = 数字列表.sort(() => Math.random() - 0.5).slice(0, 4);
+            console.log('谜底（仅用于测试）:', 谜底);
+            attempts = 0;
+            attemptsSpan.textContent = attempts;
+            recordDiv.innerHTML = '';
+
+            // 返回评定猜测函数
+            return function(用户猜测) {
+                if (用户猜测.length !== 4) {
+                    return "请输入4个数字";
+                }
+                
+                const 正确位置 = 用户猜测.filter((num, index) => num === 谜底[index]).length;
+                const 正确数字 = new Set(用户猜测.filter(num => 谜底.includes(num))).size - 正确位置;
+                
+                return `${正确位置}A${正确数字}B`;
+            };
+        }
+
+        let 评定猜测 = () => "请先开始游戏";
+
+        function updateButtonStates() {
+            submitBtn.disabled = !gameInProgress;
+            revealBtn.disabled = !gameInProgress;
+        }
+
+        function resetInputs() {
+            inputs.forEach(input => {
+                input.value = '';
+                input.classList.remove('error');
+            });
+        }
+
+        startBtn.addEventListener('click', function() {
+            评定猜测 = 游戏控制函数();
+            gameInProgress = true;
+            updateButtonStates();
+            resetInputs();
+            numberBoxes.forEach(box => box.textContent = '?');
+            attempts = 0;
+            attemptsSpan.textContent = attempts;
+            recordDiv.innerHTML = '';
+            alert('新游戏已开始！');
+        });
+
+        // 限制输入框只能输入一位数字
+        inputs.forEach(input => {
+            input.addEventListener('input', function() {
+                if (this.value.length > 1) {
+                    this.value = this.value.slice(0, 1);
+                }
+            });
+        });
+
+        submitBtn.addEventListener('click', function() {
+            let numbers = [];
+            let hasError = false;
+            inputs.forEach(input => {
+                input.classList.remove('error');
+                if (input.value === '') {
+                    hasError = true;
+                    input.classList.add('error');
+                }
+                numbers.push(parseInt(input.value));
+            });
+
+            if (hasError) {
+                alert('请填写所有数字！');
+                return;
+            }
+
+            if (new Set(numbers).size !== 4) {
+                alert('4个数字必须完全不同！');
+                inputs.forEach((input, index) => {
+                    if (numbers.indexOf(numbers[index]) !== numbers.lastIndexOf(numbers[index])) {
+                        input.classList.add('error');
+                    }
+                });
+                return;
+            }
+
+            attempts++;
+            attemptsSpan.textContent = attempts;
+            
+            let result = 评定猜测(numbers);
+            
+            let record = document.createElement('p');
+            record.textContent = `第${attempts}次尝试：${numbers.join('')} - ${result}`;
+            recordDiv.appendChild(record);
+
+            if (result === '4A0B') {
+                alert('恭喜你猜对了！');
+                gameInProgress = false;
+                updateButtonStates();
+            }
+
+            resetInputs();
+        });
+
+        revealBtn.addEventListener('click', function() {
+            if (谜底.length === 0) {
+                alert('请先开始游戏！');
+                return;
+            }
+            numberBoxes.forEach((box, index) => {
+                box.textContent = 谜底[index];
+            });
+            gameInProgress = false;
+            updateButtonStates();
+        });
+
+        updateButtonStates();
+    </script>
+</body>
+</html>
